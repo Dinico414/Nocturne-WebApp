@@ -63,11 +63,8 @@ public class MainActivity extends AppCompatActivity {
 
         webView.loadUrl("https://nocturne.brandons.place");
 
-
         WebSettings webSetting = webView.getSettings();
         webSettings.setDomStorageEnabled(true);
-
-
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -79,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
         if (webView.canGoBack()) {
             webView.goBack();
         } else {
-            super.onBackPressed();
+            super.onBackPressed(); // Exits app if no history in WebView
         }
     }
 }
