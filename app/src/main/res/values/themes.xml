@@ -1,0 +1,16 @@
+<resources>
+
+    <style name="Theme.Splash" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item> <!-- Custom background image or color -->
+    </style>
+    <style name="Theme.Nocturne" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Transparent Status Bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- Transparent Navigation Bar -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Ensure content is not covered by system bars -->
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>
