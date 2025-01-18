@@ -11,6 +11,7 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 
+/** @noinspection ALL*/
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
