@@ -4,7 +4,6 @@
 
     <uses-permission android:name="android.permission.INTERNET"/>
 
-
     <application
         android:usesCleartextTraffic="false"
         android:allowBackup="true"
@@ -16,27 +15,30 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Nocturne"
         tools:targetApi="31">
+
         <activity
             android:name=".SplashActivity"
             android:theme="@style/Theme.Splash"
-            android:label="Splash"
+            android:label="@string/app_name"
             android:launchMode="singleTask"
             android:exported="true">
+            <!-- Removed LAUNCHER category from SplashActivity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
+            <!-- Retain the LAUNCHER category only for MainActivity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
             </intent-filter>
-
         </activity>
+
     </application>
 
 </manifest>

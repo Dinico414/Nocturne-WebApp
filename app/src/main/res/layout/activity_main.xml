@@ -4,14 +4,15 @@
     android:layout_height="match_parent"
     android:background="#ff000000">
 
-    <!-- WebView for displaying the website -->
+
+
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone" />
 
-    <!-- Overlay or progress indicator -->
+
     <FrameLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
@@ -19,7 +20,7 @@
         android:background="#FF000000"
     android:visibility="visible"/>
 
-    <!-- Optional: ProgressBar -->
+
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleLarge"
