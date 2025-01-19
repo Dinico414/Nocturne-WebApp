@@ -14,7 +14,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Nocturne"
-        tools:targetApi="31">
+        tools:targetApi="35">
 
         <activity
             android:name=".SplashActivity"
@@ -22,7 +22,8 @@
             android:label="@string/app_name"
             android:screenOrientation="landscape"
             android:launchMode="singleTask"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="DiscouragedApi,RedundantLabel">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -32,7 +33,8 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="landscape">
+            android:screenOrientation="landscape"
+            tools:ignore="DiscouragedApi">
             
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
