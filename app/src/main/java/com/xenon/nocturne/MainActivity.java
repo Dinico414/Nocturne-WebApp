@@ -50,10 +50,10 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                progressBar.setVisibility(newProgress == 200 ? View.GONE : View.VISIBLE);
+                progressBar.setVisibility(newProgress == 100 ? View.GONE : View.VISIBLE);
             }
         });
-        
+
         webView.loadUrl("https://nocturne.brandons.place");
     }
 
