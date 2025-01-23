@@ -29,10 +29,10 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private FrameLayout loadingOverlay;
     private ProgressBar progressBar;
-    private Handler qrScanHandler = new Handler(Looper.getMainLooper());
+    private final Handler qrScanHandler = new Handler(Looper.getMainLooper());
     private boolean scanning = false;
-    private boolean shouldScan = true; // Controls whether scanning should continue
-    private long appStartTime; // To store the time when the app starts
+    private boolean shouldScan = true;
+    private long appStartTime;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -42,28 +42,35 @@ public class MainActivity extends AppCompatActivity {
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        initializeUI();
+        configureWebView();
+
+        appStartTime = System.currentTimeMillis();
+        webView.loadUrl("https://nocturne.brandons.place");
+
+        startQRScanner();
+    }
+
+    private void initializeUI() {
         webView = findViewById(R.id.webView);
         loadingOverlay = findViewById(R.id.loadingOverlay);
         progressBar = findViewById(R.id.progressBar);
+    }
 
-        // Store the start time of the app
-        appStartTime = System.currentTimeMillis();
-
-        // WebView Settings
+    private void configureWebView() {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                loadingOverlay.setVisibility(View.VISIBLE);
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                showLoading(true);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                loadingOverlay.postDelayed(() -> loadingOverlay.setVisibility(View.GONE), 500);
-                progressBar.postDelayed(() -> progressBar.setVisibility(View.GONE), 500);
+                hideLoadingWithDelay();
             }
         });
 
@@ -73,12 +80,15 @@ public class MainActivity extends AppCompatActivity {
                 progressBar.setVisibility(newProgress == 100 ? View.GONE : View.VISIBLE);
             }
         });
+    }
 
-        // Load the URL into the WebView
-        webView.loadUrl("https://nocturne.brandons.place");
+    private void showLoading(boolean show) {
+        loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
 
-        // Start QR Code Scanning
-        startQRScanner();
+    private void hideLoadingWithDelay() {
+        loadingOverlay.postDelayed(() -> showLoading(false), 500);
+        progressBar.postDelayed(() -> progressBar.setVisibility(View.GONE), 500);
     }
 
     @Override
@@ -94,13 +104,9 @@ public class MainActivity extends AppCompatActivity {
         qrScanHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                // Check if 50 seconds have elapsed or scanning is no longer needed
-                long elapsedTime = System.currentTimeMillis() - appStartTime;
-                if (elapsedTime <= 50_000 && shouldScan) {
+                if (shouldContinueScanning()) {
                     if (!scanning) {
                         scanning = true;
-
-                        // Capture WebView as Bitmap
                         webView.post(() -> {
                             Bitmap bitmap = captureWebView();
                             if (bitmap != null) {
@@ -109,15 +115,17 @@ public class MainActivity extends AppCompatActivity {
                             scanning = false;
                         });
                     }
-
-                    // Continue scanning
-                    qrScanHandler.postDelayed(this, 2000); // Re-scan every 2 seconds
+                    qrScanHandler.postDelayed(this, 2000);
                 } else {
+                    shouldScan = false;
                     System.out.println("QR scanning has stopped.");
-                    shouldScan = false; // Ensure scanning stops
                 }
             }
-        }, 2000); // Initial delay of 2 seconds
+        }, 2000);
+    }
+
+    private boolean shouldContinueScanning() {
+        return System.currentTimeMillis() - appStartTime <= 50_000 && shouldScan;
     }
 
     private Bitmap captureWebView() {
@@ -140,30 +148,26 @@ public class MainActivity extends AppCompatActivity {
         BinaryBitmap binaryBitmap = new BinaryBitmap(new HybridBinarizer(source));
 
         try {
-            QRCodeReader reader = new QRCodeReader();
-            Result result = reader.decode(binaryBitmap);
+            Result result = new QRCodeReader().decode(binaryBitmap);
             handleQRCodeResult(result.getText());
-        } catch (Exception e) {
-            // No QR code found, continue scanning
+        } catch (Exception ignored) {
         }
     }
 
     private void handleQRCodeResult(String qrCode) {
         runOnUiThread(() -> {
-            // Log the QR Code detected
             System.out.println("QR Code Detected: " + qrCode);
-
-            // Open the link in the system's default browser
-            try {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(qrCode));
-                startActivity(browserIntent);
-
-                // Stop scanning after opening the link
-                shouldScan = false;
-                System.out.println("Scanning stopped as the link was opened.");
-            } catch (Exception e) {
-                System.out.println("Invalid URL: " + qrCode);
-            }
+            openLinkInBrowser(qrCode);
         });
+    }
+
+    private void openLinkInBrowser(String qrCode) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(qrCode)));
+            shouldScan = false;
+            System.out.println("Scanning stopped as the link was opened.");
+        } catch (Exception e) {
+            System.out.println("Invalid URL: " + qrCode);
+        }
     }
 }
