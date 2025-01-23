@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private Handler qrScanHandler = new Handler(Looper.getMainLooper());
     private boolean scanning = false;
+    private boolean shouldScan = true; // Controls whether scanning should continue
     private long appStartTime; // To store the time when the app starts
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -93,9 +94,9 @@ public class MainActivity extends AppCompatActivity {
         qrScanHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                // Check if 50 seconds have elapsed since the app started
+                // Check if 50 seconds have elapsed or scanning is no longer needed
                 long elapsedTime = System.currentTimeMillis() - appStartTime;
-                if (elapsedTime <= 50_000) { // 50 seconds = 50,000 milliseconds
+                if (elapsedTime <= 50_000 && shouldScan) {
                     if (!scanning) {
                         scanning = true;
 
@@ -109,10 +110,11 @@ public class MainActivity extends AppCompatActivity {
                         });
                     }
 
-                    // Continue scanning until 50 seconds are up
+                    // Continue scanning
                     qrScanHandler.postDelayed(this, 2000); // Re-scan every 2 seconds
                 } else {
-                    System.out.println("QR scanning has stopped after 50 seconds.");
+                    System.out.println("QR scanning has stopped.");
+                    shouldScan = false; // Ensure scanning stops
                 }
             }
         }, 2000); // Initial delay of 2 seconds
@@ -146,7 +148,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     private void handleQRCodeResult(String qrCode) {
         runOnUiThread(() -> {
             // Log the QR Code detected
@@ -156,6 +157,10 @@ public class MainActivity extends AppCompatActivity {
             try {
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(qrCode));
                 startActivity(browserIntent);
+
+                // Stop scanning after opening the link
+                shouldScan = false;
+                System.out.println("Scanning stopped as the link was opened.");
             } catch (Exception e) {
                 System.out.println("Invalid URL: " + qrCode);
             }
