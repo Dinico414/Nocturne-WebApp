@@ -1,9 +1,11 @@
 package com.xenon.nocturne;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,6 +21,8 @@ import android.widget.Toast;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.content.ContextCompat;
 
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
@@ -187,20 +191,50 @@ public class MainActivity extends AppCompatActivity {
     private void handleQRCodeResult(String qrCode) {
         runOnUiThread(() -> {
             System.out.println("QR Code Detected: " + qrCode);
-            openLinkInWebView(qrCode);
+            openLinkInBrowser(qrCode);
         });
     }
 
-    private void openLinkInWebView(String qrCode) {
+    private void openLinkInBrowser(String qrCode) {
         try {
-            // Load the URL in the WebView instead of opening it in the browser
-            webView.loadUrl(qrCode);
-            shouldScan = false;
-            System.out.println("Scanning stopped as the link was opened in the WebView.");
+            // Validate the URL before opening and check for "phone-auth?session"
+            if ((qrCode.startsWith("http://") || qrCode.startsWith("https://")) && qrCode.contains("phone-auth?session")) {
+                // Create a CustomTabsIntent
+                CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
+                builder.setToolbarColor(ContextCompat.getColor(this, R.color.black));
+                builder.setShowTitle(true); // Show the page title in the toolbar
+
+                CustomTabsIntent customTabsIntent = builder.build();
+
+                // Open the link in the custom tab
+                customTabsIntent.launchUrl(this, Uri.parse(qrCode));
+                shouldScan = false;
+                System.out.println("Scanning stopped as the link was opened in the custom tab.");
+
+                // Pause scanning for 5 minutes
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    shouldScan = true; // Resume scanning after 5 minutes
+                    System.out.println("Scanning resumed after 5-minute pause.");
+                    startQRScanner(); // Restart the QR scanner
+                }, 5000); //
+            } else {
+                System.out.println("Invalid URL or does not contain 'phone-auth?session': " + qrCode);
+            }
         } catch (Exception e) {
-            System.out.println("Invalid URL: " + qrCode);
+            System.out.println("Error opening URL: " + qrCode);
         }
     }
+
+
+    private void openLinkInWebView(String url) {
+        try {
+            // Load the URL in the WebView
+            webView.loadUrl(url);
+        } catch (Exception e) {
+            System.out.println("Invalid URL: " + url);
+        }
+    }
+
 
     private void setupButtonListeners(Button button, int buttonId) {
         SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
@@ -226,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Toast.makeText(this, "Link saved to Button " + (buttonId - R.id.button1 + 1), Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "Only links containing 'playlist' or 'collection' can be saved.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "You can only save playlists.", Toast.LENGTH_SHORT).show();
             }
             return true;
         });
