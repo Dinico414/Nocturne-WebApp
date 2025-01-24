@@ -1,10 +1,9 @@
 package com.xenon.nocturne;
 
 import android.annotation.SuppressLint;
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,13 +16,19 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import android.widget.Button;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
     private long appStartTime;
     private boolean doubleBackToExitPressedOnce = false;
 
+    private final Map<Integer, String> buttonLinks = new HashMap<>();
+    private Button button1, button2, button3, button4;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,16 +55,28 @@ public class MainActivity extends AppCompatActivity {
         initializeUI();
         configureWebView();
 
+        // Load saved links from SharedPreferences
+        loadSavedLinks();
+
         appStartTime = System.currentTimeMillis();
         webView.loadUrl("https://nocturne.brandons.place");
 
         startQRScanner();
+
+        setupButtonListeners(button1, R.id.button1);
+        setupButtonListeners(button2, R.id.button2);
+        setupButtonListeners(button3, R.id.button3);
+        setupButtonListeners(button4, R.id.button4);
     }
 
     private void initializeUI() {
         webView = findViewById(R.id.webView);
         loadingOverlay = findViewById(R.id.loadingOverlay);
         progressBar = findViewById(R.id.progressBar);
+        button1 = findViewById(R.id.button1);
+        button2 = findViewById(R.id.button2);
+        button3 = findViewById(R.id.button3);
+        button4 = findViewById(R.id.button4);
     }
 
     private void configureWebView() {
@@ -167,17 +187,61 @@ public class MainActivity extends AppCompatActivity {
     private void handleQRCodeResult(String qrCode) {
         runOnUiThread(() -> {
             System.out.println("QR Code Detected: " + qrCode);
-            openLinkInBrowser(qrCode);
+            openLinkInWebView(qrCode);
         });
     }
 
-    private void openLinkInBrowser(String qrCode) {
+    private void openLinkInWebView(String qrCode) {
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(qrCode)));
+            // Load the URL in the WebView instead of opening it in the browser
+            webView.loadUrl(qrCode);
             shouldScan = false;
-            System.out.println("Scanning stopped as the link was opened.");
+            System.out.println("Scanning stopped as the link was opened in the WebView.");
         } catch (Exception e) {
             System.out.println("Invalid URL: " + qrCode);
+        }
+    }
+
+    private void setupButtonListeners(Button button, int buttonId) {
+        SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        button.setOnClickListener(v -> {
+            String link = buttonLinks.get(buttonId);
+            if (link != null) {
+                openLinkInWebView(link);  // Open link inside WebView
+            } else {
+                Toast.makeText(this, "No link saved to this button.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        button.setOnLongClickListener(v -> {
+            String currentUrl = webView.getUrl();
+            if (currentUrl != null && (currentUrl.contains("playlist") || currentUrl.contains("collection"))) {
+                buttonLinks.put(buttonId, currentUrl);
+
+                // Save the link in SharedPreferences
+                editor.putString("button_" + buttonId, currentUrl); // Save with a key based on the buttonId
+                editor.apply(); // Apply the changes asynchronously
+
+                Toast.makeText(this, "Link saved to Button " + (buttonId - R.id.button1 + 1), Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Only links containing 'playlist' or 'collection' can be saved.", Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        });
+    }
+
+    // Method to load saved links from SharedPreferences
+    private void loadSavedLinks() {
+        SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
+
+        // Load the links and put them into the buttonLinks map
+        for (int i = 1; i <= 4; i++) {
+            String savedLink = sharedPreferences.getString("button_" + (R.id.button1 + i - 1), null);
+            if (savedLink != null) {
+                buttonLinks.put(R.id.button1 + i - 1, savedLink);
+            }
         }
     }
 }
