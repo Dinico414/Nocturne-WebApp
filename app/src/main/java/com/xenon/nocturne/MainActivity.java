@@ -58,8 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
         initializeUI();
         configureWebView();
-
-        // Load saved links from SharedPreferences
+        
         loadSavedLinks();
 
         appStartTime = System.currentTimeMillis();
@@ -197,26 +196,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void openLinkInBrowser(String qrCode) {
         try {
-            // Validate the URL before opening and check for "phone-auth?session"
             if ((qrCode.startsWith("http://") || qrCode.startsWith("https://")) && qrCode.contains("phone-auth?session")) {
-                // Create a CustomTabsIntent
+
                 CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
                 builder.setToolbarColor(ContextCompat.getColor(this, R.color.black));
-                builder.setShowTitle(true); // Show the page title in the toolbar
+                builder.setShowTitle(true);
 
                 CustomTabsIntent customTabsIntent = builder.build();
 
-                // Open the link in the custom tab
                 customTabsIntent.launchUrl(this, Uri.parse(qrCode));
                 shouldScan = false;
                 System.out.println("Scanning stopped as the link was opened in the custom tab.");
 
-                // Pause scanning for 5 minutes
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    shouldScan = true; // Resume scanning after 5 minutes
+                    shouldScan = true;
                     System.out.println("Scanning resumed after 5-minute pause.");
-                    startQRScanner(); // Restart the QR scanner
-                }, 5000); //
+                    startQRScanner();
+                }, 5000);
             } else {
                 System.out.println("Invalid URL or does not contain 'phone-auth?session': " + qrCode);
             }
@@ -228,7 +224,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void openLinkInWebView(String url) {
         try {
-            // Load the URL in the WebView
             webView.loadUrl(url);
         } catch (Exception e) {
             System.out.println("Invalid URL: " + url);
@@ -243,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(v -> {
             String link = buttonLinks.get(buttonId);
             if (link != null) {
-                openLinkInWebView(link);  // Open link inside WebView
+                openLinkInWebView(link);
             } else {
                 Toast.makeText(this, "No link saved to this button.", Toast.LENGTH_SHORT).show();
             }
@@ -254,9 +249,8 @@ public class MainActivity extends AppCompatActivity {
             if (currentUrl != null && (currentUrl.contains("playlist") || currentUrl.contains("collection"))) {
                 buttonLinks.put(buttonId, currentUrl);
 
-                // Save the link in SharedPreferences
-                editor.putString("button_" + buttonId, currentUrl); // Save with a key based on the buttonId
-                editor.apply(); // Apply the changes asynchronously
+                editor.putString("button_" + buttonId, currentUrl);
+                editor.apply();
 
                 Toast.makeText(this, "Link saved to Button " + (buttonId - R.id.button1 + 1), Toast.LENGTH_SHORT).show();
             } else {
@@ -266,11 +260,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Method to load saved links from SharedPreferences
     private void loadSavedLinks() {
         SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
 
-        // Load the links and put them into the buttonLinks map
         for (int i = 1; i <= 4; i++) {
             String savedLink = sharedPreferences.getString("button_" + (R.id.button1 + i - 1), null);
             if (savedLink != null) {
