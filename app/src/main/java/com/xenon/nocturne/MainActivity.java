@@ -1,14 +1,20 @@
 package com.xenon.nocturne;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -19,12 +25,15 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import com.xenon.nocturne.R;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
 import com.google.zxing.BinaryBitmap;
@@ -45,11 +54,10 @@ public class MainActivity extends AppCompatActivity {
     private final Handler qrScanHandler = new Handler(Looper.getMainLooper());
     private boolean scanning = false;
     private boolean shouldScan = true;
-    private long appStartTime;
     private boolean doubleBackToExitPressedOnce = false;
 
     private final Map<Integer, String> buttonLinks = new HashMap<>();
-    private Button button1, button2, button3, button4, volumeNobButton;
+    private Button button1, button2, button3, button4;
     private GestureDetector gestureDetector;
     private boolean isPressed = false;
 
@@ -66,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
 
         loadSavedLinks();
 
-        appStartTime = System.currentTimeMillis();
         webView.loadUrl("https://nocturne.brandons.place");
 
         startQRScanner();
@@ -76,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
         setupButtonListeners(button3, R.id.button3);
         setupButtonListeners(button4, R.id.button4);
 
+        volumeNobButton = findViewById(R.id.volumeNobButton);  // This is where you reference your button
+        volumeNobLayout = findViewById(R.id.volumeNobLayout);
         setupVolumeNobButton();
     }
 
@@ -87,9 +96,9 @@ public class MainActivity extends AppCompatActivity {
         button2 = findViewById(R.id.button2);
         button3 = findViewById(R.id.button3);
         button4 = findViewById(R.id.button4);
-        volumeNobButton = findViewById(R.id.volumeNobButton);
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView() {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -162,10 +171,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean shouldContinueScanning() {
-        return shouldScan; // No time limit, just scan continuously as long as shouldScan is true
+        return shouldScan;
     }
 
 
+    /**
+     * @noinspection CallToPrintStackTrace
+     */
     private Bitmap captureWebView() {
         try {
             Bitmap bitmap = Bitmap.createBitmap(webView.getWidth(), webView.getHeight(), Bitmap.Config.ARGB_8888);
@@ -274,57 +286,85 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // New method to setup the Volume Knob button
+    private ConstraintLayout volumeNobLayout; // Layout for the volume knob
+    private ImageButton volumeNobButton;     // Knob button
+    private boolean isAnimating = false;     // Flag to prevent overlapping animations
+    private int initialMargin;               // Initial position of the knob layout
+    private Handler handler = new Handler(); // Handler to manage the delay
+    private Runnable resetRunnable;          // Runnable for delayed animation
+
     @SuppressLint("ClickableViewAccessibility")
     private void setupVolumeNobButton() {
-        // Get screen width and calculate margin
-        int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        float marginLeft = screenWidth - dpToPx();
+        volumeNobButton = findViewById(R.id.volumeNobButton); // Initialize the button
+        volumeNobLayout = findViewById(R.id.volumeNobLayout); // Initialize the layout
 
-        volumeNobButton.setX(marginLeft);
+        int screenWidth = getScreenWidth();       // Get screen width
+        initialMargin = screenWidth - dpToPx(20); // Calculate initial margin (20dp from right edge)
 
-        // Gesture detection for swipe actions
-        gestureDetector = new GestureDetector(this, new GestureListener());
+        // Set the initial position of the layout
+        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
+        layoutParams.leftMargin = initialMargin; // Initial position
+        volumeNobLayout.setLayoutParams(layoutParams);
 
+        // Initialize the reset runnable (animates back to the original position)
+        resetRunnable = () -> {
+            if (isAnimating) return; // Ensure no overlapping animations
+            animateLayout(initialMargin); // Animate back to the original position
+        };
+
+        // Set touch listener for the knob
         volumeNobButton.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN && !isPressed) {
-                // On press, move the button 50dp to the left
-                moveButton(150);
-                isPressed = true;
-            }
-            gestureDetector.onTouchEvent(event);
-            return true;
-        });
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    // Handle press and animate to a new position
+                    if (!isAnimating) {
+                        isAnimating = true; // Start animation flag
+                        animateLayout(initialMargin - dpToPx(120)); // Move left by 150dp
+                    }
+                    return true;
 
-        // Auto-return the button after 5 seconds
-        volumeNobButton.postDelayed(() -> {
-            if (isPressed) {
-                moveButton(-150);
-                isPressed = false;
+                case MotionEvent.ACTION_UP:
+                    // Handle release: start delayed animation back to the original position
+                    handler.removeCallbacks(resetRunnable); // Remove any previous delayed tasks
+                    handler.postDelayed(resetRunnable, 3000); // Schedule animation back after 5 seconds
+                    return true;
+
+                default:
+                    return false;
             }
-        }, 5000);
+        });
     }
 
-    // Method to move the button
-    private void moveButton(float distance) {
-        float newX = volumeNobButton.getX() - distance;
-        ObjectAnimator animator = ObjectAnimator.ofFloat(volumeNobButton, "x", newX);
-        animator.setDuration(300);
+    // Animate the layout to a target position
+    private void animateLayout(int targetMargin) {
+        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
+        int currentMargin = layoutParams.leftMargin;
+
+        // Animate from the current position to the target position
+        ValueAnimator animator = ValueAnimator.ofInt(currentMargin, targetMargin);
+        animator.setDuration(300); // Duration of the animation (300ms)
+        animator.addUpdateListener(animation -> {
+            int animatedValue = (int) animation.getAnimatedValue();
+            layoutParams.leftMargin = animatedValue;
+            volumeNobLayout.setLayoutParams(layoutParams);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                isAnimating = false; // Reset the animation flag
+            }
+        });
         animator.start();
     }
 
-    // Convert DP to Pixels
-    private int dpToPx() {
+    // Helper method to convert DP to pixels
+    private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
-        return (int) (20 * density);
+        return (int) (dp * density);
     }
 
-    // Gesture Listener to detect swipe
-    private static class GestureListener extends GestureDetector.SimpleOnGestureListener {
-        @Override
-        public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
-            // Handle swipe gestures for the volume knob button here
-            return super.onFling(e1, e2, velocityX, velocityY);
-        }
+    // Get the screen width in pixels
+    private int getScreenWidth() {
+        return getResources().getDisplayMetrics().widthPixels;
     }
 }

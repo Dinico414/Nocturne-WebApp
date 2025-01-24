@@ -92,19 +92,49 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-
-    <Button
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:id="@+id/volumeNobLayout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:focusable="true"
+    android:layout_marginStart="20dp"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    android:clickable="true"
+    >
+    <ImageButton
         android:id="@+id/volumeNobButton"
         android:layout_width="250dp"
         android:layout_height="250dp"
         android:background="@drawable/volume_nob_background"
-        android:foreground="@drawable/volume_nob_foreground"
+        android:importantForAccessibility="no"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_alignParentStart="true"
         android:visibility="visible"
         tools:visibility="visible"/>
+    <ImageView
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:importantForAccessibility="no"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:foreground="@drawable/volume_nob_foreground"
+        />
+    <ImageView
+        android:layout_margin="30dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:importantForAccessibility="no"
+        app:layout_constraintStart_toStartOf="@id/volumeNobButton"
+        app:layout_constraintTop_toTopOf="@id/volumeNobButton"
+        app:layout_constraintBottom_toBottomOf="@id/volumeNobButton"
+        android:foreground="@drawable/volume"
+        />
+</androidx.constraintlayout.widget.ConstraintLayout>
 
     <FrameLayout
         android:id="@+id/loadingOverlay"
