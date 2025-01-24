@@ -1,7 +1,7 @@
 package com.xenon.nocturne;
 
+import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -9,17 +9,20 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import android.widget.Button;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.ContextCompat;
@@ -46,7 +49,9 @@ public class MainActivity extends AppCompatActivity {
     private boolean doubleBackToExitPressedOnce = false;
 
     private final Map<Integer, String> buttonLinks = new HashMap<>();
-    private Button button1, button2, button3, button4;
+    private Button button1, button2, button3, button4, volumeNobButton;
+    private GestureDetector gestureDetector;
+    private boolean isPressed = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -58,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
 
         initializeUI();
         configureWebView();
-        
+
         loadSavedLinks();
 
         appStartTime = System.currentTimeMillis();
@@ -70,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
         setupButtonListeners(button2, R.id.button2);
         setupButtonListeners(button3, R.id.button3);
         setupButtonListeners(button4, R.id.button4);
+
+        setupVolumeNobButton();
     }
 
     private void initializeUI() {
@@ -80,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
         button2 = findViewById(R.id.button2);
         button3 = findViewById(R.id.button3);
         button4 = findViewById(R.id.button4);
+        volumeNobButton = findViewById(R.id.volumeNobButton);
     }
 
     private void configureWebView() {
@@ -137,29 +145,26 @@ public class MainActivity extends AppCompatActivity {
         qrScanHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (shouldContinueScanning()) {
-                    if (!scanning) {
-                        scanning = true;
-                        webView.post(() -> {
-                            Bitmap bitmap = captureWebView();
-                            if (bitmap != null) {
-                                scanQRCode(bitmap);
-                            }
-                            scanning = false;
-                        });
-                    }
-                    qrScanHandler.postDelayed(this, 2000);
-                } else {
-                    shouldScan = false;
-                    System.out.println("QR scanning has stopped.");
+                // No condition to stop scanning after 50 seconds
+                if (!scanning) {
+                    scanning = true;
+                    webView.post(() -> {
+                        Bitmap bitmap = captureWebView();
+                        if (bitmap != null) {
+                            scanQRCode(bitmap);
+                        }
+                        scanning = false;
+                    });
                 }
+                qrScanHandler.postDelayed(this, 2000); // Continue scanning every 2 seconds
             }
         }, 2000);
     }
 
     private boolean shouldContinueScanning() {
-        return System.currentTimeMillis() - appStartTime <= 50_000 && shouldScan;
+        return shouldScan; // No time limit, just scan continuously as long as shouldScan is true
     }
+
 
     private Bitmap captureWebView() {
         try {
@@ -221,7 +226,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     private void openLinkInWebView(String url) {
         try {
             webView.loadUrl(url);
@@ -229,7 +233,6 @@ public class MainActivity extends AppCompatActivity {
             System.out.println("Invalid URL: " + url);
         }
     }
-
 
     private void setupButtonListeners(Button button, int buttonId) {
         SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
@@ -268,6 +271,60 @@ public class MainActivity extends AppCompatActivity {
             if (savedLink != null) {
                 buttonLinks.put(R.id.button1 + i - 1, savedLink);
             }
+        }
+    }
+
+    // New method to setup the Volume Knob button
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupVolumeNobButton() {
+        // Get screen width and calculate margin
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        float marginLeft = screenWidth - dpToPx();
+
+        volumeNobButton.setX(marginLeft);
+
+        // Gesture detection for swipe actions
+        gestureDetector = new GestureDetector(this, new GestureListener());
+
+        volumeNobButton.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN && !isPressed) {
+                // On press, move the button 50dp to the left
+                moveButton(150);
+                isPressed = true;
+            }
+            gestureDetector.onTouchEvent(event);
+            return true;
+        });
+
+        // Auto-return the button after 5 seconds
+        volumeNobButton.postDelayed(() -> {
+            if (isPressed) {
+                moveButton(-150);
+                isPressed = false;
+            }
+        }, 5000);
+    }
+
+    // Method to move the button
+    private void moveButton(float distance) {
+        float newX = volumeNobButton.getX() - distance;
+        ObjectAnimator animator = ObjectAnimator.ofFloat(volumeNobButton, "x", newX);
+        animator.setDuration(300);
+        animator.start();
+    }
+
+    // Convert DP to Pixels
+    private int dpToPx() {
+        float density = getResources().getDisplayMetrics().density;
+        return (int) (20 * density);
+    }
+
+    // Gesture Listener to detect swipe
+    private static class GestureListener extends GestureDetector.SimpleOnGestureListener {
+        @Override
+        public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
+            // Handle swipe gestures for the volume knob button here
+            return super.onFling(e1, e2, velocityX, velocityY);
         }
     }
 }
