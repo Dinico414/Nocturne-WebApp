@@ -11,7 +11,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -24,16 +23,19 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,8 +51,11 @@ public class MainActivity extends AppCompatActivity {
 
     private final Map<Integer, String> buttonLinks = new HashMap<>();
     private Button button1, button2, button3, button4;
-    private GestureDetector gestureDetector;
-    private boolean isPressed = false;
+    private ConstraintLayout volumeNobLayout;
+    private ImageButton volumeNobButton;
+    private boolean isAnimating = false;
+    private int initialMargin;
+    private final Handler handler = new Handler();
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -62,20 +67,10 @@ public class MainActivity extends AppCompatActivity {
 
         initializeUI();
         configureWebView();
-
         loadSavedLinks();
-
         webView.loadUrl("https://nocturne.brandons.place");
-
         startQRScanner();
-
-        setupButtonListeners(button1, R.id.button1);
-        setupButtonListeners(button2, R.id.button2);
-        setupButtonListeners(button3, R.id.button3);
-        setupButtonListeners(button4, R.id.button4);
-
-        volumeNobButton = findViewById(R.id.volumeNobButton);
-        volumeNobLayout = findViewById(R.id.volumeNobLayout);
+        setupButtonListeners();
         setupVolumeNobButton();
     }
 
@@ -87,6 +82,8 @@ public class MainActivity extends AppCompatActivity {
         button2 = findViewById(R.id.button2);
         button3 = findViewById(R.id.button3);
         button4 = findViewById(R.id.button4);
+        volumeNobButton = findViewById(R.id.volumeNobButton);
+        volumeNobLayout = findViewById(R.id.volumeNobLayout);
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -134,40 +131,27 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            this.doubleBackToExitPressedOnce = true;
+            doubleBackToExitPressedOnce = true;
             Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show();
 
-            new Handler(Looper.getMainLooper()).postDelayed(() -> doubleBackToExitPressedOnce = false, 2000);
+            handler.postDelayed(() -> doubleBackToExitPressedOnce = false, 2000);
         }
     }
 
     private void startQRScanner() {
-        qrScanHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (!scanning) {
-                    scanning = true;
-                    webView.post(() -> {
-                        Bitmap bitmap = captureWebView();
-                        if (bitmap != null) {
-                            scanQRCode(bitmap);
-                        }
-                        scanning = false;
-                    });
+        qrScanHandler.postDelayed(() -> {
+            if (!scanning) {
+                scanning = true;
+                Bitmap bitmap = captureWebView();
+                if (bitmap != null) {
+                    scanQRCode(bitmap);
                 }
-                qrScanHandler.postDelayed(this, 2000);
+                scanning = false;
             }
+            qrScanHandler.postDelayed(this::startQRScanner, 2000);
         }, 2000);
     }
 
-    private boolean shouldContinueScanning() {
-        return shouldScan;
-    }
-
-
-    /**
-     * @noinspection CallToPrintStackTrace
-     */
     private Bitmap captureWebView() {
         try {
             Bitmap bitmap = Bitmap.createBitmap(webView.getWidth(), webView.getHeight(), Bitmap.Config.ARGB_8888);
@@ -196,54 +180,35 @@ public class MainActivity extends AppCompatActivity {
 
     private void handleQRCodeResult(String qrCode) {
         runOnUiThread(() -> {
-            System.out.println("QR Code Detected: " + qrCode);
-            openLinkInBrowser(qrCode);
+            if (qrCode.startsWith("http://") || qrCode.startsWith("https://")) {
+                openLinkInBrowser(qrCode);
+            }
         });
     }
 
     private void openLinkInBrowser(String qrCode) {
-        try {
-            if ((qrCode.startsWith("http://") || qrCode.startsWith("https://")) && qrCode.contains("phone-auth?session")) {
-
-                CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
-                builder.setToolbarColor(ContextCompat.getColor(this, R.color.black));
-                builder.setShowTitle(true);
-
-                CustomTabsIntent customTabsIntent = builder.build();
-
-                customTabsIntent.launchUrl(this, Uri.parse(qrCode));
-                shouldScan = false;
-                System.out.println("Scanning stopped as the link was opened in the custom tab.");
-
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    shouldScan = true;
-                    System.out.println("Scanning resumed after 5-minute pause.");
-                    startQRScanner();
-                }, 5000);
-            } else {
-                System.out.println("Invalid URL or does not contain 'phone-auth?session': " + qrCode);
-            }
-        } catch (Exception e) {
-            System.out.println("Error opening URL: " + qrCode);
-        }
+        CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
+        builder.setToolbarColor(ContextCompat.getColor(this, R.color.black));
+        builder.setShowTitle(true);
+        CustomTabsIntent customTabsIntent = builder.build();
+        customTabsIntent.launchUrl(this, Uri.parse(qrCode));
+        shouldScan = false;
+        handler.postDelayed(() -> shouldScan = true, 5000);
     }
 
-    private void openLinkInWebView(String url) {
-        try {
-            webView.loadUrl(url);
-        } catch (Exception e) {
-            System.out.println("Invalid URL: " + url);
-        }
+    private void setupButtonListeners() {
+        setupButton(button1, R.id.button1);
+        setupButton(button2, R.id.button2);
+        setupButton(button3, R.id.button3);
+        setupButton(button4, R.id.button4);
     }
 
-    private void setupButtonListeners(Button button, int buttonId) {
+    private void setupButton(Button button, int buttonId) {
         SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-
         button.setOnClickListener(v -> {
             String link = buttonLinks.get(buttonId);
             if (link != null) {
-                openLinkInWebView(link);
+                webView.loadUrl(link);
             } else {
                 Toast.makeText(this, "No link saved to this button.", Toast.LENGTH_SHORT).show();
             }
@@ -251,15 +216,10 @@ public class MainActivity extends AppCompatActivity {
 
         button.setOnLongClickListener(v -> {
             String currentUrl = webView.getUrl();
-            if (currentUrl != null && (currentUrl.contains("playlist") || currentUrl.contains("collection"))) {
+            if (currentUrl != null) {
                 buttonLinks.put(buttonId, currentUrl);
-
-                editor.putString("button_" + buttonId, currentUrl);
-                editor.apply();
-
-                Toast.makeText(this, "Link saved to Button " + (buttonId - R.id.button1 + 1), Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "You can only save playlists.", Toast.LENGTH_SHORT).show();
+                sharedPreferences.edit().putString("button_" + buttonId, currentUrl).apply();
+                Toast.makeText(this, "Link saved.", Toast.LENGTH_SHORT).show();
             }
             return true;
         });
@@ -267,7 +227,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadSavedLinks() {
         SharedPreferences sharedPreferences = getSharedPreferences("SavedLinks", MODE_PRIVATE);
-
         for (int i = 1; i <= 4; i++) {
             String savedLink = sharedPreferences.getString("button_" + (R.id.button1 + i - 1), null);
             if (savedLink != null) {
@@ -276,59 +235,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private ConstraintLayout volumeNobLayout;
-    private ImageButton volumeNobButton;
-    private boolean isAnimating = false;
-    private int initialMargin;
-    private Handler handler = new Handler();
-    private Runnable resetRunnable;
-
     @SuppressLint("ClickableViewAccessibility")
     private void setupVolumeNobButton() {
-        volumeNobButton = findViewById(R.id.volumeNobButton);
-        volumeNobLayout = findViewById(R.id.volumeNobLayout);
-
-        int screenWidth = getScreenWidth();
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
         initialMargin = screenWidth - dpToPx(20);
 
-        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
-        layoutParams.leftMargin = initialMargin;
-        volumeNobLayout.setLayoutParams(layoutParams);
-
-        resetRunnable = () -> {
-            if (isAnimating) return;
-            animateLayout(initialMargin);
-        };
+        resetVolumeNobPosition(initialMargin);
 
         volumeNobButton.setOnTouchListener((v, event) -> {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    if (!isAnimating) {
-                        isAnimating = true;
-                        animateLayout(initialMargin - dpToPx(120));
-                    }
-                    return true;
-
-                case MotionEvent.ACTION_UP:
-                    handler.removeCallbacks(resetRunnable);
-                    handler.postDelayed(resetRunnable, 3000);
-                    return true;
-
-                default:
-                    return false;
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (!isAnimating) animateVolumeNob(initialMargin - dpToPx(120));
+                return true;
+            } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                handler.postDelayed(() -> animateVolumeNob(initialMargin), 3000);
+                return true;
             }
+            return false;
         });
     }
 
-    private void animateLayout(int targetMargin) {
+    private void animateVolumeNob(int targetMargin) {
         ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
-        int currentMargin = layoutParams.leftMargin;
-
-        ValueAnimator animator = ValueAnimator.ofInt(currentMargin, targetMargin);
+        ValueAnimator animator = ValueAnimator.ofInt(layoutParams.leftMargin, targetMargin);
         animator.setDuration(300);
         animator.addUpdateListener(animation -> {
-            int animatedValue = (int) animation.getAnimatedValue();
-            layoutParams.leftMargin = animatedValue;
+            layoutParams.leftMargin = (int) animation.getAnimatedValue();
             volumeNobLayout.setLayoutParams(layoutParams);
         });
         animator.addListener(new AnimatorListenerAdapter() {
@@ -337,15 +268,18 @@ public class MainActivity extends AppCompatActivity {
                 isAnimating = false;
             }
         });
+        isAnimating = true;
         animator.start();
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return (int) (dp * density);
+    private void resetVolumeNobPosition(int margin) {
+        ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
+        layoutParams.leftMargin = margin;
+        volumeNobLayout.setLayoutParams(layoutParams);
     }
 
-    private int getScreenWidth() {
-        return getResources().getDisplayMetrics().widthPixels;
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density);
     }
 }
+
