@@ -2,19 +2,15 @@ package com.xenon.nocturne;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -28,21 +24,16 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import com.xenon.nocturne.R;
-
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
-
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -83,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
         setupButtonListeners(button3, R.id.button3);
         setupButtonListeners(button4, R.id.button4);
 
-        volumeNobButton = findViewById(R.id.volumeNobButton);  // This is where you reference your button
+        volumeNobButton = findViewById(R.id.volumeNobButton);
         volumeNobLayout = findViewById(R.id.volumeNobLayout);
         setupVolumeNobButton();
     }
@@ -154,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
         qrScanHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                // No condition to stop scanning after 50 seconds
                 if (!scanning) {
                     scanning = true;
                     webView.post(() -> {
@@ -165,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
                         scanning = false;
                     });
                 }
-                qrScanHandler.postDelayed(this, 2000); // Continue scanning every 2 seconds
+                qrScanHandler.postDelayed(this, 2000);
             }
         }, 2000);
     }
@@ -286,47 +276,42 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private ConstraintLayout volumeNobLayout; // Layout for the volume knob
-    private ImageButton volumeNobButton;     // Knob button
-    private boolean isAnimating = false;     // Flag to prevent overlapping animations
-    private int initialMargin;               // Initial position of the knob layout
-    private Handler handler = new Handler(); // Handler to manage the delay
-    private Runnable resetRunnable;          // Runnable for delayed animation
+    private ConstraintLayout volumeNobLayout;
+    private ImageButton volumeNobButton;
+    private boolean isAnimating = false;
+    private int initialMargin;
+    private Handler handler = new Handler();
+    private Runnable resetRunnable;
 
     @SuppressLint("ClickableViewAccessibility")
     private void setupVolumeNobButton() {
-        volumeNobButton = findViewById(R.id.volumeNobButton); // Initialize the button
-        volumeNobLayout = findViewById(R.id.volumeNobLayout); // Initialize the layout
+        volumeNobButton = findViewById(R.id.volumeNobButton);
+        volumeNobLayout = findViewById(R.id.volumeNobLayout);
 
-        int screenWidth = getScreenWidth();       // Get screen width
-        initialMargin = screenWidth - dpToPx(20); // Calculate initial margin (20dp from right edge)
+        int screenWidth = getScreenWidth();
+        initialMargin = screenWidth - dpToPx(20);
 
-        // Set the initial position of the layout
         ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
-        layoutParams.leftMargin = initialMargin; // Initial position
+        layoutParams.leftMargin = initialMargin;
         volumeNobLayout.setLayoutParams(layoutParams);
 
-        // Initialize the reset runnable (animates back to the original position)
         resetRunnable = () -> {
-            if (isAnimating) return; // Ensure no overlapping animations
-            animateLayout(initialMargin); // Animate back to the original position
+            if (isAnimating) return;
+            animateLayout(initialMargin);
         };
 
-        // Set touch listener for the knob
         volumeNobButton.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    // Handle press and animate to a new position
                     if (!isAnimating) {
-                        isAnimating = true; // Start animation flag
-                        animateLayout(initialMargin - dpToPx(120)); // Move left by 150dp
+                        isAnimating = true;
+                        animateLayout(initialMargin - dpToPx(120));
                     }
                     return true;
 
                 case MotionEvent.ACTION_UP:
-                    // Handle release: start delayed animation back to the original position
-                    handler.removeCallbacks(resetRunnable); // Remove any previous delayed tasks
-                    handler.postDelayed(resetRunnable, 3000); // Schedule animation back after 5 seconds
+                    handler.removeCallbacks(resetRunnable);
+                    handler.postDelayed(resetRunnable, 3000);
                     return true;
 
                 default:
@@ -335,14 +320,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Animate the layout to a target position
     private void animateLayout(int targetMargin) {
         ConstraintLayout.LayoutParams layoutParams = (ConstraintLayout.LayoutParams) volumeNobLayout.getLayoutParams();
         int currentMargin = layoutParams.leftMargin;
 
-        // Animate from the current position to the target position
         ValueAnimator animator = ValueAnimator.ofInt(currentMargin, targetMargin);
-        animator.setDuration(300); // Duration of the animation (300ms)
+        animator.setDuration(300);
         animator.addUpdateListener(animation -> {
             int animatedValue = (int) animation.getAnimatedValue();
             layoutParams.leftMargin = animatedValue;
@@ -351,19 +334,17 @@ public class MainActivity extends AppCompatActivity {
         animator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                isAnimating = false; // Reset the animation flag
+                isAnimating = false;
             }
         });
         animator.start();
     }
 
-    // Helper method to convert DP to pixels
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return (int) (dp * density);
     }
 
-    // Get the screen width in pixels
     private int getScreenWidth() {
         return getResources().getDisplayMetrics().widthPixels;
     }
