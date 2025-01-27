@@ -238,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("ClickableViewAccessibility")
     private void setupVolumeNobButton() {
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        initialMargin = screenWidth - dpToPx(20);
+        initialMargin = screenWidth - dpToPx(30);
 
         resetVolumeNobPosition(initialMargin);
 
