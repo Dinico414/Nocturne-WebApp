@@ -45,4 +45,5 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     implementation(libs.core)
     implementation(libs.zxing.android.embedded)
+    implementation (libs.android.gif.drawable)
 }

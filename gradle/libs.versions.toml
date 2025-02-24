@@ -1,5 +1,6 @@
 [versions]
-agp = "8.8.0-alpha08"
+agp = "8.8.1"
+androidGifDrawable = "1.2.22"
 barcodeScanning = "17.3.0"
 core = "3.5.2"
 junit = "4.13.2"
@@ -13,6 +14,7 @@ zxingAndroidEmbedded = "4.3.0"
 browser = "1.8.0"
 
 [libraries]
+android-gif-drawable = { module = "pl.droidsonroids.gif:android-gif-drawable", version.ref = "androidGifDrawable" }
 barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "barcodeScanning" }
 core = { module = "com.google.zxing:core", version.ref = "core" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
+    xmlns:gif="http://schemas.android.com/tools"
     android:background="@color/black"
     android:layout_height="match_parent">
+
+    <pl.droidsonroids.gif.GifImageView
+        android:id="@+id/gif_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        gif:src="@drawable/inshot_20250220_173925074" />
 
     <!-- You can add a logo or custom image here -->
     <ImageView
@@ -10,6 +18,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/nocturne"
-    android:layout_centerInParent="true" />
+        android:layout_centerInParent="true" />
 
 </RelativeLayout>
